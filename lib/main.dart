@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:typed_data';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -11,6 +10,7 @@ import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'food.dart';
 import 'api_service.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 void main() async{
 WidgetsFlutterBinding.ensureInitialized();
@@ -266,6 +266,10 @@ class _ImageClassifierState extends State<ImageClassifier> {
         _nutritionInfo = fetchedInfo;
         _isLoadingNutrition = false;
       });
+
+      if(fetchedInfo.isNotEmpty){
+        await _saveNutritionInfo(fetchedInfo[0]);
+      }
     }catch(e){
       print('Error fetching nutrition info: $e');
       setState(() {
@@ -273,6 +277,41 @@ class _ImageClassifierState extends State<ImageClassifier> {
         _nutritionInfo = [];
       });
     }
+  }
+
+  Future<void> _showNutritionHistory() async {
+    final historyFoods = await _fetchNutritionHistory();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nutrition History'),
+        content: historyFoods.isEmpty
+          ? const Text('No nutrition history found')
+          : SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: historyFoods.length,
+                itemBuilder: (context, index) {
+                  final food = historyFoods[index];
+                  return ListTile(
+                    title: Text(food.name),
+                    subtitle: Text(
+                      'Calories: ${food.calories} kcal\n Serving Size: ${food.servingSize} g\n Carbohydrates: ${food.carbohydrates} g\n Fat: ${food.fatTotal} g\n Protein: ${food.protein} g\n Time Added: ${food.timestamp}',
+                    )
+                  );
+                },
+              ),
+            ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Float32List _imageToFloat32List(img.Image image) {
@@ -330,6 +369,12 @@ class _ImageClassifierState extends State<ImageClassifier> {
           icon: const Icon(Icons.logout),
           onPressed: () => _signOut(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _showNutritionHistory,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add padding for content
@@ -467,5 +512,83 @@ class _ImageClassifierState extends State<ImageClassifier> {
         );
       }
     );
+  }
+  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
+  Future<void> _saveNutritionInfo(Food food) async {
+    try{
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final newEntryRef = _databaseRef
+        .child('users')
+        .child(user.uid)
+        .child('nutrition')
+        .push();
+
+      await newEntryRef.set({
+        'name': food.name,
+        'servingSize': food.servingSize,
+        'calories': food.calories,
+        'fatTotal': food.fatTotal,
+        'fatSaturated': food.fatSaturated,
+        'carbohydrates': food.carbohydrates,
+        'protein': food.protein,
+        'sodium': food.sodium,
+        'fiber': food.fiber,
+        'sugar': food.sugar,
+        'potassium': food.potassium,
+        'cholesterol': food.cholesterol,
+        'timestamp': DateTime.now().microsecondsSinceEpoch ~/ 1000000,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nutrition info saved successfully')),
+      );
+    } catch(e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred while saving nutrition info: $e')),
+      );
+    }
+  }
+
+  Future<List<Food>> _fetchNutritionHistory() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return [];
+
+      final snapshot = await _databaseRef
+          .child('users')
+          .child(user.uid)
+          .child('nutrition')
+          .once();
+
+      final DataSnapshot dataSnapshot = snapshot.snapshot;
+
+      if (dataSnapshot.value == null) return [];
+
+      final Map<dynamic, dynamic> entriesMap =
+          dataSnapshot.value as Map<dynamic, dynamic>;
+
+      return entriesMap.values.map<Food>((entry) {
+        return Food(
+          name: entry['name'] ?? 'Unknown',
+          servingSize: (entry['servingSize'] ?? 0).toDouble(),
+          calories: (entry['calories'] ?? 0).toDouble(),
+          fatTotal: (entry['fatTotal'] ?? 0).toDouble(),
+          fatSaturated: (entry['fatSaturated'] ?? 0).toDouble(),
+          protein: (entry['protein'] ?? 0).toDouble(),
+          sodium: (entry['sodium'] ?? 0).toInt(),
+          potassium: (entry['potassium'] ?? 0).toInt(),
+          cholesterol: (entry['cholesterol'] ?? 0).toInt(),
+          carbohydrates: (entry['carbohydrates'] ?? 0).toDouble(),
+          fiber: (entry['fiber'] ?? 0).toDouble(),
+          sugar: (entry['sugar'] ?? 0).toDouble(),
+          timestamp: DateTime.fromMicrosecondsSinceEpoch(entry['timestamp'] *1000000), 
+        );
+      }).toList(); // Convert the Iterable<Food> to List<Food>
+    } catch (e) {
+      print('Error fetching nutrition history: $e');
+      return [];
+    }
   }
 }

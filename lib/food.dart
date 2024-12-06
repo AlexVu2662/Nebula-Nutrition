@@ -13,6 +13,7 @@ class Food{
   final double carbohydrates;
   final double fiber;
   final double sugar;
+  final DateTime timestamp;
 
   Food({
     required this.name,
@@ -27,6 +28,7 @@ class Food{
     required this.carbohydrates,
     required this.fiber,
     required this.sugar,
+    required this.timestamp,
   });
 
   factory Food.fromJson(Map<String, dynamic> json){
@@ -43,6 +45,9 @@ class Food{
       carbohydrates: (json['carbohydrates_total_g'] as num?)?.toDouble() ?? 0.0,
       fiber: (json['fiber_g'] as num?)?.toDouble() ?? 0.0,
       sugar: (json['sugar_g'] as num?)?.toDouble() ?? 0.0,
+      timestamp: json['timestamp'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'] * 1000000)
+          : DateTime.now(), // Convert timestamp to DateTime
     );
   }
 }

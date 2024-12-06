@@ -55,6 +55,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '607563996465',
     projectId: 'nebulanutrition-16c2a',
     authDomain: 'nebulanutrition-16c2a.firebaseapp.com',
+    databaseURL: 'https://nebulanutrition-16c2a-default-rtdb.firebaseio.com',
     storageBucket: 'nebulanutrition-16c2a.firebasestorage.app',
     measurementId: 'G-2XB9WDT09X',
   );
@@ -64,6 +65,7 @@ class DefaultFirebaseOptions {
     appId: '1:607563996465:ios:6bebdc8b13f7983337a410',
     messagingSenderId: '607563996465',
     projectId: 'nebulanutrition-16c2a',
+    databaseURL: 'https://nebulanutrition-16c2a-default-rtdb.firebaseio.com',
     storageBucket: 'nebulanutrition-16c2a.firebasestorage.app',
     iosClientId: '607563996465-6a5uc41qnae54ncs1gko4qb39fvu896f.apps.googleusercontent.com',
     iosBundleId: 'com.example.nebnu',
