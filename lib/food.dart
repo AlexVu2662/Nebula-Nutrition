@@ -1,4 +1,6 @@
-
+//Written By: Alexander Vu
+//Tested By: Alexander Vu
+//Debugged By: Alexander Vu
 
 class Food{
   final String name;
